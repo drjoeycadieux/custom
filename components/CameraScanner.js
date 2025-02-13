@@ -1,42 +1,65 @@
-import React from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons'; // Assuming you have react-native-vector-icons installed
+// filepath: /c:/Users/Dev/Documents/react-native/custom/components/CameraScanner.js
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Button, PermissionsAndroid } from 'react-native';
+import { RNCamera } from 'react-native-camera';
 
-// components
-import QrcodeScanner from './components/QrcodeScanner';
+const CameraScanner = () => {
+    const [hasCameraPermission, setHasCameraPermission] = useState(null);
+    const [scannedData, setScannedData] = useState('');
 
-const App = () => {
-    const handleRefresh = () => {
-        // Add your refresh logic here
-        console.log('Refresh button pressed');
+    useEffect(() => {
+        const getCameraPermission = async () => {
+            try {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.CAMERA,
+                    {
+                        title: "Camera Permission",
+                        message: "This app needs access to your camera to scan QR codes.",
+                        buttonNeutral: "Ask Me Later",
+                        buttonNegative: "Cancel",
+                        buttonPositive: "OK"
+                    }
+                );
+                setHasCameraPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
+            } catch (err) {
+                console.warn(err);
+            }
+        };
+
+        getCameraPermission();
+    }, []);
+
+    const handleBarCodeRead = ({ data }) => {
+        setScannedData(data);
     };
 
-    const handleCamera = () => {
-        // Add your camera logic here
-        console.log('Camera button pressed');
-    };
+    if (hasCameraPermission === null) {
+        return <Text>Requesting for camera permission</Text>;
+    }
+
+    if (hasCameraPermission === false) {
+        return <Text>No access to camera</Text>;
+    }
 
     return (
         <View style={styles.container}>
-            <StatusBar
-                backgroundColor="transparent"
-                barStyle="light-content"
-                translucent={true}
-            />
-            <View style={styles.header}>
-                <Text style={styles.headerText}>QRcode Generator</Text>
-                <View style={styles.buttonContainer}>
-                    <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-                        <Icon name="refresh" size={24} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleCamera} style={styles.cameraButton}>
-                        <Icon name="camera" size={24} color="white" />
-                    </TouchableOpacity>
+            {hasCameraPermission && (
+                <RNCamera
+                    style={styles.camera}
+                    onBarCodeRead={handleBarCodeRead}
+                    captureAudio={false}
+                >
+                    <View style={styles.cameraView}>
+                        <Text style={styles.text}>Scan a QR code</Text>
+                    </View>
+                </RNCamera>
+            )}
+            {scannedData ? (
+                <View style={styles.result}>
+                    <Text>Scanned Data: {scannedData}</Text>
+                    <Button title="Scan Again" onPress={() => setScannedData('')} />
                 </View>
-            </View>
-            <View style={styles.content}>
-                <QrcodeScanner />
-            </View>
+            ) : null}
         </View>
     );
 };
@@ -44,35 +67,31 @@ const App = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
-    },
-    header: {
-        height: 90,
-        backgroundColor: '#ab5d26',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         alignItems: 'center',
-        flexDirection: 'row',
-        paddingTop: StatusBar.currentHeight, // Adjust for the status bar height
-        paddingHorizontal: 16,
     },
-    headerText: {
-        color: 'white',
-        fontSize: 20,
+    camera: {
+        flex: 1,
+        width: '100%',
     },
-    buttonContainer: {
-        flexDirection: 'row',
-    },
-    refreshButton: {
-        padding: 10,
-    },
-    cameraButton: {
-        padding: 10,
-    },
-    content: {
+    cameraView: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    text: {
+        fontSize: 18,
+        color: 'white',
+    },
+    result: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        backgroundColor: 'white',
+        padding: 10,
+        borderRadius: 5,
+    },
 });
 
-export default App;
+export default CameraScanner;

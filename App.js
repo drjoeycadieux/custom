@@ -48,6 +48,9 @@ const App = () => {
                               <QrcodeScanner />
                         )}
                   </View>
+                  <View style={styles.footer}>
+                        <Text style={styles.footerText}>Techtack-Technologies | Products - QrCode Scanner an generator</Text>
+                  </View>
             </View>
       );
 };
@@ -83,6 +86,19 @@ const styles = StyleSheet.create({
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
+      },
+      footer: {
+            height: 50,
+            backgroundColor: '#ab5d26',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'absolute',
+            bottom: 0,
+            width: '100%',
+      },
+      footerText: {
+            color: 'white',
+            fontSize: 16,
       },
 });
 
