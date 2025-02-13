@@ -7,7 +7,7 @@ Thank you for considering contributing to our project! Here are some guidelines 
 1. **Fork the repository**: Click the "Fork" button at the top right of the repository page.
 2. **Clone your fork**: 
     ```sh
-    git clone https://github.com/your-username/your-repo-name.git
+    git clone https://github.com/drjoeycadieux/custom.git
     ```
 3. **Create a branch**: 
     ```sh
