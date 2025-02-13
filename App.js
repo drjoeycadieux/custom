@@ -1,105 +1,120 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons'; // Assuming you have react-native-vector-icons installed
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { View, Text, TextInput, Button, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-// components
-import QrcodeScanner from './components/QrcodeScanner';
-import CameraScanner from './components/CameraScanner';
+// Create Auth Context
+const AuthContext = createContext();
 
-const App = () => {
-      const [showCamera, setShowCamera] = useState(false);
+// Authentication Provider
+const AuthProvider = ({ children }) => {
+      const [user, setUser] = useState(null);
 
-      const handleRefresh = () => {
-            // Add your refresh logic here
-            console.log('Refresh button pressed');
+      useEffect(() => {
+            const checkLogin = async () => {
+                  const storedUser = await AsyncStorage.getItem('user');
+                  if (storedUser) setUser(JSON.parse(storedUser));
+            };
+            checkLogin();
+      }, []);
+
+      const login = async (email, password) => {
+            if (email === 'admin' && password === 'password') {
+                  const userData = { email };
+                  await AsyncStorage.setItem('user', JSON.stringify(userData));
+                  setUser(userData);
+            }
       };
 
-      const handleCamera = () => {
-            setShowCamera(true);
-      };
-
-      const handleScan = (data) => {
-            console.log('QR Code scanned:', data);
-            setShowCamera(false);
+      const logout = async () => {
+            await AsyncStorage.removeItem('user');
+            setUser(null);
       };
 
       return (
-            <View style={styles.container}>
-                  <StatusBar
-                        backgroundColor="transparent"
-                        barStyle="light-content"
-                        translucent={true}
-                  />
-                  <View style={styles.header}>
-                        <Text style={styles.headerText}>QRcode Generator</Text>
-                        <View style={styles.buttonContainer}>
-                              <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-                                    <Icon name="refresh" size={24} color="white" />
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={handleCamera} style={styles.cameraButton}>
-                                    <Icon name="camera" size={24} color="white" />
-                              </TouchableOpacity>
-                        </View>
-                  </View>
-                  <View style={styles.content}>
-                        {showCamera ? (
-                              <CameraScanner onScan={handleScan} />
-                        ) : (
-                              <QrcodeScanner />
-                        )}
-                  </View>
-                  <View style={styles.footer}>
-                        <Text style={styles.footerText}>Techtack-Technologies | Products - QrCode Scanner an generator</Text>
-                  </View>
+            <AuthContext.Provider value={{ user, login, logout }}>
+                  {children}
+            </AuthContext.Provider>
+      );
+};
+
+// Login Screen
+const LoginScreen = ({ navigation }) => {
+      const { login } = useContext(AuthContext);
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+
+      return (
+            <View>
+                  <Text>Login</Text>
+                  <TextInput placeholder='Email' value={email} onChangeText={setEmail} />
+                  <TextInput placeholder='Password' value={password} onChangeText={setPassword} secureTextEntry />
+                  <Button title='Login' onPress={() => login(email, password)} />
+                  <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                        <Text>Don't have an account? Register</Text>
+                  </TouchableOpacity>
             </View>
       );
 };
 
-const styles = StyleSheet.create({
-      container: {
-            flex: 1,
-            backgroundColor: '#fff',
-      },
-      header: {
-            height: 90,
-            backgroundColor: '#ab5d26',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexDirection: 'row',
-            paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight : 0, // Adjust for the status bar height
-            paddingHorizontal: 16,
-      },
-      headerText: {
-            color: 'white',
-            fontSize: 20,
-      },
-      buttonContainer: {
-            flexDirection: 'row',
-      },
-      refreshButton: {
-            padding: 10,
-      },
-      cameraButton: {
-            padding: 10,
-      },
-      content: {
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-      },
-      footer: {
-            height: 50,
-            backgroundColor: '#ab5d26',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'absolute',
-            bottom: 0,
-            width: '100%',
-      },
-      footerText: {
-            color: 'white',
-            fontSize: 16,
-      },
-});
+// Register Screen (Mockup)
+const RegisterScreen = ({ navigation }) => (
+      <View>
+            <Text>Register</Text>
+            <Button title='Go to Login' onPress={() => navigation.navigate('Login')} />
+      </View>
+);
 
-export default App;
+// Home Screen (Protected)
+const HomeScreen = () => {
+      const { logout } = useContext(AuthContext);
+      return (
+            <View>
+                  <Text>Home</Text>
+                  <Button title='Logout' onPress={logout} />
+            </View>
+      );
+};
+
+// Profile Screen (Protected)
+const ProfileScreen = () => (
+      <View>
+            <Text>Profile</Text>
+      </View>
+);
+
+const AuthStack = createStackNavigator();
+const MainTabs = createBottomTabNavigator();
+
+// Auth Navigator (Login/Register)
+const AuthNavigator = () => (
+      <AuthStack.Navigator>
+            <AuthStack.Screen name='Login' component={LoginScreen} />
+            <AuthStack.Screen name='Register' component={RegisterScreen} />
+      </AuthStack.Navigator>
+);
+
+// Main App Navigator (Protected Routes)
+const MainNavigator = () => (
+      <MainTabs.Navigator>
+            <MainTabs.Screen name='Home' component={HomeScreen} />
+            <MainTabs.Screen name='Profile' component={ProfileScreen} />
+      </MainTabs.Navigator>
+);
+
+// Root Navigation Handler
+const RootNavigator = () => {
+      const { user } = useContext(AuthContext);
+      return <NavigationContainer>{user ? <MainNavigator /> : <AuthNavigator />}</NavigationContainer>;
+};
+
+// App Entry Point
+export default function App() {
+      return (
+            <AuthProvider>
+                  <RootNavigator />
+            </AuthProvider>
+      );
+}
