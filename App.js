@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { auth } from './firebaseConfig';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
 
 // Create Auth Context
 const AuthContext = createContext();
@@ -11,30 +18,44 @@ const AuthContext = createContext();
 // Authentication Provider
 const AuthProvider = ({ children }) => {
       const [user, setUser] = useState(null);
+      const [loading, setLoading] = useState(true);
 
       useEffect(() => {
-            const checkLogin = async () => {
-                  const storedUser = await AsyncStorage.getItem('user');
-                  if (storedUser) setUser(JSON.parse(storedUser));
-            };
-            checkLogin();
+            const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+                  setUser(firebaseUser);
+                  setLoading(false);
+            });
+            return unsubscribe;
       }, []);
 
       const login = async (email, password) => {
-            if (email === 'admin' && password === 'password') {
-                  const userData = { email };
-                  await AsyncStorage.setItem('user', JSON.stringify(userData));
-                  setUser(userData);
+            try {
+                  await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                  alert(error.message);
+            }
+      };
+
+      const register = async (email, password) => {
+            try {
+                  await createUserWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                  alert(error.message);
             }
       };
 
       const logout = async () => {
-            await AsyncStorage.removeItem('user');
-            setUser(null);
+            try {
+                  await signOut(auth);
+            } catch (error) {
+                  alert(error.message);
+            }
       };
 
+      if (loading) return null;
+
       return (
-            <AuthContext.Provider value={{ user, login, logout }}>
+            <AuthContext.Provider value={{ user, login, logout, register }}>
                   {children}
             </AuthContext.Provider>
       );
@@ -49,8 +70,8 @@ const LoginScreen = ({ navigation }) => {
       return (
             <View>
                   <Text>Login</Text>
-                  <TextInput placeholder='Email' value={email} onChangeText={setEmail} />
-                  <TextInput placeholder='Password' value={password} onChangeText={setPassword} secureTextEntry />
+                  <TextInput placeholder='Email' value={email} onChangeText={setEmail} autoCapitalize='none' />
+                  <TextInput placeholder='Password' value={password} onChangeText={setPassword} secureTextEntry autoCapitalize='none' />
                   <Button title='Login' onPress={() => login(email, password)} />
                   <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                         <Text>Don't have an account? Register</Text>
@@ -59,13 +80,24 @@ const LoginScreen = ({ navigation }) => {
       );
 };
 
-// Register Screen (Mockup)
-const RegisterScreen = ({ navigation }) => (
-      <View>
-            <Text>Register</Text>
-            <Button title='Go to Login' onPress={() => navigation.navigate('Login')} />
-      </View>
-);
+// Register Screen (with Firebase)
+const RegisterScreen = ({ navigation }) => {
+      const { register } = useContext(AuthContext);
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+
+      return (
+            <View>
+                  <Text>Register</Text>
+                  <TextInput placeholder='Email' value={email} onChangeText={setEmail} autoCapitalize='none' />
+                  <TextInput placeholder='Password' value={password} onChangeText={setPassword} secureTextEntry autoCapitalize='none' />
+                  <Button title='Register' onPress={() => register(email, password)} />
+                  <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                        <Text>Already have an account? Login</Text>
+                  </TouchableOpacity>
+            </View>
+      );
+};
 
 // Home Screen (Protected)
 const HomeScreen = () => {
